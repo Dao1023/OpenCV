@@ -15,3 +15,7 @@
 ![](output/直方图均衡化.png)
 
 ![](output/边缘检测.png)
+
+![](output/理想滤波器.png)
+
+![](output/高斯滤波器.png)
