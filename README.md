@@ -19,3 +19,5 @@
 ![](output/理想滤波器.png)
 
 ![](output/高斯滤波器.png)
+
+![](output/图谱分析.png)
