@@ -1,0 +1,304 @@
+"""
+测试车牌识别系统中的各个函数
+"""
+
+import cv2
+import numpy as np
+import os
+from license_plate_recognition import preprocess_image, detect_edges, apply_morphology, detect_contours, extract_plate_region
+
+def test_preprocess_image():
+    """测试图像预处理函数"""
+    # 测试所有LPR目录下的图像
+    test_dir = "../assets/images/LPR"
+    test_files = [f for f in os.listdir(test_dir) if f.endswith('.jpg')]
+    test_files.sort()  # 确保按顺序测试
+    
+    # 确保output/LPR目录存在
+    output_dir = "../output/LPR"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    success_count = 0
+    
+    for test_file in test_files:
+        image_path = os.path.join(test_dir, test_file)
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            print(f"无法读取图像: {image_path}")
+            continue
+        
+        print(f"测试图像: {test_file}, 尺寸: {image.shape}")
+        
+        # 测试预处理函数
+        processed_image = preprocess_image(image)
+        
+        if processed_image is None:
+            print(f"图像 {test_file} 预处理失败")
+            continue
+        
+        print(f"图像 {test_file} 预处理成功，处理后尺寸: {processed_image.shape}")
+        
+        # 保存处理后的图像用于检查，使用新的命名规范
+        base_name = os.path.splitext(test_file)[0]
+        output_path = f"{output_dir}/{base_name}_1_preprocessed.jpg"
+        cv2.imwrite(output_path, processed_image)
+        print(f"预处理后的图像已保存到 {output_path}")
+        
+        success_count += 1
+    
+    print(f"图像预处理测试完成，成功处理 {success_count}/{len(test_files)} 张图像")
+    return success_count == len(test_files)
+
+def test_detect_edges():
+    """测试边缘检测函数"""
+    # 测试所有LPR目录下的图像
+    test_dir = "../assets/images/LPR"
+    test_files = [f for f in os.listdir(test_dir) if f.endswith('.jpg')]
+    test_files.sort()  # 确保按顺序测试
+    
+    # 确保output/LPR目录存在
+    output_dir = "../output/LPR"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    success_count = 0
+    
+    for test_file in test_files:
+        image_path = os.path.join(test_dir, test_file)
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            print(f"无法读取图像: {image_path}")
+            continue
+        
+        # 先进行预处理
+        processed_image = preprocess_image(image)
+        
+        if processed_image is None:
+            print(f"图像 {test_file} 预处理失败，跳过边缘检测")
+            continue
+        
+        # 测试边缘检测函数
+        edge_image = detect_edges(processed_image)
+        
+        if edge_image is None:
+            print(f"图像 {test_file} 边缘检测失败")
+            continue
+        
+        # 保存边缘检测结果，使用新的命名规范
+        base_name = os.path.splitext(test_file)[0]
+        output_path = f"{output_dir}/{base_name}_2_edge.jpg"
+        cv2.imwrite(output_path, edge_image)
+        print(f"边缘检测结果已保存到 {output_path}")
+        
+        success_count += 1
+    
+    print(f"边缘检测测试完成，成功处理 {success_count}/{len(test_files)} 张图像")
+    return success_count == len(test_files)
+
+def test_apply_morphology():
+    """测试形态学操作函数"""
+    # 测试所有LPR目录下的图像
+    test_dir = "../assets/images/LPR"
+    test_files = [f for f in os.listdir(test_dir) if f.endswith('.jpg')]
+    test_files.sort()  # 确保按顺序测试
+    
+    # 确保output/LPR目录存在
+    output_dir = "../output/LPR"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    success_count = 0
+    
+    for test_file in test_files:
+        image_path = os.path.join(test_dir, test_file)
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            print(f"无法读取图像: {image_path}")
+            continue
+        
+        # 先进行预处理和边缘检测
+        processed_image = preprocess_image(image)
+        
+        if processed_image is None:
+            print(f"图像 {test_file} 预处理失败，跳过形态学操作")
+            continue
+        
+        edge_image = detect_edges(processed_image)
+        
+        if edge_image is None:
+            print(f"图像 {test_file} 边缘检测失败，跳过形态学操作")
+            continue
+        
+        # 测试形态学操作函数
+        morph_image = apply_morphology(edge_image)
+        
+        if morph_image is None:
+            print(f"图像 {test_file} 形态学操作失败")
+            continue
+        
+        # 保存形态学操作结果，使用新的命名规范
+        base_name = os.path.splitext(test_file)[0]
+        output_path = f"{output_dir}/{base_name}_3_morphology.jpg"
+        cv2.imwrite(output_path, morph_image)
+        print(f"形态学操作结果已保存到 {output_path}")
+        
+        success_count += 1
+    
+    print(f"形态学操作测试完成，成功处理 {success_count}/{len(test_files)} 张图像")
+    return success_count == len(test_files)
+
+def test_detect_contours():
+    """测试轮廓检测函数"""
+    # 测试所有LPR目录下的图像
+    test_dir = "../assets/images/LPR"
+    test_files = [f for f in os.listdir(test_dir) if f.endswith('.jpg')]
+    test_files.sort()  # 确保按顺序测试
+    
+    # 确保output/LPR目录存在
+    output_dir = "../output/LPR"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    success_count = 0
+    total_contours = 0
+    
+    for test_file in test_files:
+        image_path = os.path.join(test_dir, test_file)
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            print(f"无法读取图像: {image_path}")
+            continue
+        
+        # 先进行预处理、边缘检测和形态学操作
+        processed_image = preprocess_image(image)
+        
+        if processed_image is None:
+            print(f"图像 {test_file} 预处理失败，跳过轮廓检测")
+            continue
+        
+        edge_image = detect_edges(processed_image)
+        
+        if edge_image is None:
+            print(f"图像 {test_file} 边缘检测失败，跳过轮廓检测")
+            continue
+        
+        morph_image = apply_morphology(edge_image)
+        
+        if morph_image is None:
+            print(f"图像 {test_file} 形态学操作失败，跳过轮廓检测")
+            continue
+        
+        # 测试轮廓检测函数
+        contours = detect_contours(morph_image)
+        
+        if contours is None:
+            print(f"图像 {test_file} 轮廓检测失败")
+            continue
+        
+        contour_count = len(contours)
+        total_contours += contour_count
+        print(f"图像 {test_file} 检测到 {contour_count} 个可能是车牌的轮廓")
+        
+        # 在原图上绘制轮廓
+        result_image = image.copy()
+        cv2.drawContours(result_image, contours, -1, (0, 255, 0), 2)
+        
+        # 保存轮廓检测结果，使用新的命名规范
+        base_name = os.path.splitext(test_file)[0]
+        output_path = f"{output_dir}/{base_name}_4_contours.jpg"
+        cv2.imwrite(output_path, result_image)
+        print(f"轮廓检测结果已保存到 {output_path}")
+        
+        success_count += 1
+    
+    print(f"轮廓检测测试完成，成功处理 {success_count}/{len(test_files)} 张图像，共检测到 {total_contours} 个轮廓")
+    return success_count == len(test_files)
+
+def test_extract_plate_region():
+    """测试车牌区域提取函数"""
+    # 测试所有LPR目录下的图像
+    test_dir = "../assets/images/LPR"
+    test_files = [f for f in os.listdir(test_dir) if f.endswith('.jpg')]
+    test_files.sort()  # 确保按顺序测试
+    
+    # 确保output/LPR目录存在
+    output_dir = "../output/LPR"
+    os.makedirs(output_dir, exist_ok=True)
+    
+    success_count = 0
+    
+    for test_file in test_files:
+        image_path = os.path.join(test_dir, test_file)
+        image = cv2.imread(image_path)
+        
+        if image is None:
+            print(f"无法读取图像: {image_path}")
+            continue
+        
+        # 先进行预处理、边缘检测、形态学操作和轮廓检测
+        processed_image = preprocess_image(image)
+        
+        if processed_image is None:
+            print(f"图像 {test_file} 预处理失败，跳过车牌区域提取")
+            continue
+        
+        edge_image = detect_edges(processed_image)
+        
+        if edge_image is None:
+            print(f"图像 {test_file} 边缘检测失败，跳过车牌区域提取")
+            continue
+        
+        morph_image = apply_morphology(edge_image)
+        
+        if morph_image is None:
+            print(f"图像 {test_file} 形态学操作失败，跳过车牌区域提取")
+            continue
+        
+        contours = detect_contours(morph_image)
+        
+        if contours is None or len(contours) == 0:
+            print(f"图像 {test_file} 没有检测到轮廓，跳过车牌区域提取")
+            continue
+        
+        # 测试车牌区域提取函数
+        plate_region = extract_plate_region(image, contours)
+        
+        if plate_region is None:
+            print(f"图像 {test_file} 车牌区域提取失败")
+            continue
+        
+        print(f"图像 {test_file} 成功提取车牌区域")
+        
+        # 保存提取的车牌区域，使用新的命名规范
+        base_name = os.path.splitext(test_file)[0]
+        output_path = f"{output_dir}/{base_name}_5_plate.jpg"
+        cv2.imwrite(output_path, plate_region)
+        print(f"车牌区域已保存到 {output_path}")
+        
+        # 在原图上绘制提取的车牌区域边界框
+        result_image = image.copy()
+        x, y, w, h = cv2.boundingRect(contours[0])  # 使用第一个轮廓作为示例
+        cv2.rectangle(result_image, (x, y), (x + w, y + h), (0, 0, 255), 2)
+        
+        # 保存带有边界框的结果，使用新的命名规范
+        output_path = f"{output_dir}/{base_name}_5_plate_boxes.jpg"
+        cv2.imwrite(output_path, result_image)
+        print(f"车牌边界框结果已保存到 {output_path}")
+        
+        success_count += 1
+    
+    print(f"车牌区域提取测试完成，成功处理 {success_count}/{len(test_files)} 张图像")
+    return success_count == len(test_files)
+
+if __name__ == "__main__":
+    print("测试图像预处理函数...")
+    test_preprocess_image()
+    print("\n测试边缘检测函数...")
+    test_detect_edges()
+    print("\n测试形态学操作函数...")
+    test_apply_morphology()
+    print("\n测试轮廓检测函数...")
+    test_detect_contours()
+    print("\n测试车牌区域提取函数...")
+    test_extract_plate_region()
