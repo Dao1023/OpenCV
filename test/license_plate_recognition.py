@@ -308,7 +308,30 @@ def preprocess_plate_region(plate_image):
     返回:
         预处理后的车牌图像
     """
-    pass
+    # 转换为灰度图像
+    if len(plate_image.shape) == 3:
+        gray = cv2.cvtColor(plate_image, cv2.COLOR_BGR2GRAY)
+    else:
+        gray = plate_image.copy()
+    
+    # 增强对比度
+    clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8, 8))
+    enhanced = clahe.apply(gray)
+    
+    # 高斯滤波降噪
+    blurred = cv2.GaussianBlur(enhanced, (3, 3), 0)
+    
+    # 自适应阈值二值化
+    binary = cv2.adaptiveThreshold(
+        blurred, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, 
+        cv2.THRESH_BINARY_INV, 11, 2
+    )
+    
+    # 形态学操作去除噪声
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (2, 2))
+    processed = cv2.morphologyEx(binary, cv2.MORPH_CLOSE, kernel)
+    
+    return processed
 
 
 def detect_character_boundaries(plate_image):
@@ -319,7 +342,66 @@ def detect_character_boundaries(plate_image):
     返回:
         字符边界信息
     """
-    pass
+    # 计算垂直投影
+    vertical_projection = np.sum(plate_image, axis=0)
+    
+    # 平滑投影曲线
+    kernel_size = 3
+    kernel = np.ones(kernel_size) / kernel_size
+    smoothed_projection = np.convolve(vertical_projection, kernel, mode='same')
+    
+    # 寻找字符边界
+    boundaries = []
+    in_char = False
+    start = 0
+    
+    # 设置阈值
+    threshold = np.max(smoothed_projection) * 0.1
+    
+    for i, value in enumerate(smoothed_projection):
+        if not in_char and value > threshold:
+            # 进入字符区域
+            in_char = True
+            start = i
+        elif in_char and value <= threshold:
+            # 离开字符区域
+            in_char = False
+            end = i
+            # 过滤太窄的区域（可能是噪声）
+            if end - start > 5:
+                boundaries.append((start, end))
+    
+    # 处理最后一个字符
+    if in_char:
+        end = len(smoothed_projection) - 1
+        if end - start > 5:
+            boundaries.append((start, end))
+    
+    # 如果检测到的字符数量不合理，尝试使用连通区域分析
+    if len(boundaries) < 5 or len(boundaries) > 10:
+        # 使用连通区域分析
+        num_labels, labels, stats, centroids = cv2.connectedComponentsWithStats(plate_image, connectivity=8)
+        
+        # 过滤掉太小的连通区域
+        min_area = plate_image.shape[0] * plate_image.shape[1] * 0.01
+        char_regions = []
+        
+        for i in range(1, num_labels):  # 跳过背景标签0
+            area = stats[i, cv2.CC_STAT_AREA]
+            if area > min_area:
+                x = stats[i, cv2.CC_STAT_LEFT]
+                y = stats[i, cv2.CC_STAT_TOP]
+                w = stats[i, cv2.CC_STAT_WIDTH]
+                h = stats[i, cv2.CC_STAT_HEIGHT]
+                char_regions.append((x, x + w, y, y + h))
+        
+        # 按x坐标排序
+        char_regions.sort(key=lambda x: x[0])
+        
+        # 转换为边界格式
+        boundaries = [(region[0], region[1]) for region in char_regions]
+    
+    return boundaries
 
 
 def extract_character_images(plate_image, boundaries):
