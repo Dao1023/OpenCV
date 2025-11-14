@@ -60,14 +60,14 @@ def apply_morphology(edges):
     返回:
         形态学操作后的图像
     """
-    # 定义结构元素
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (15, 5))
+    # 创建一个较小的矩形结构元素，减少模糊效果
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (5, 2))  # 从(15, 5)减小到(5, 2)
     
-    # 闭操作（先膨胀后腐蚀）连接断开的边缘
-    closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel)
+    # 进行闭操作（先膨胀后腐蚀），减少迭代次数
+    closed = cv2.morphologyEx(edges, cv2.MORPH_CLOSE, kernel, iterations=1)  # 减少迭代次数
     
-    # 再次膨胀操作填充内部空洞
-    dilated = cv2.dilate(closed, kernel, iterations=1)
+    # 进行轻微的膨胀操作，减少迭代次数
+    dilated = cv2.dilate(closed, kernel, iterations=1)  # 减少迭代次数
     
     return dilated
 
@@ -91,20 +91,41 @@ def detect_contours(morph_image):
         # 计算轮廓面积
         area = cv2.contourArea(contour)
         
-        # 过滤掉太小的轮廓
-        if area < image_area * 0.001:  # 面积小于整个图像的0.1%
+        # 过滤掉太小的轮廓 - 提高最小面积阈值
+        if area < image_area * 0.002:  # 面积小于整个图像的0.2%
             continue
             
         # 获取轮廓的边界矩形
         x, y, w, h = cv2.boundingRect(contour)
         
-        # 车牌的宽高比通常在2.0到6.0之间
+        # 车牌的宽高比通常在2.5到5.5之间 - 缩小范围
         aspect_ratio = w / h
-        if aspect_ratio < 2.0 or aspect_ratio > 6.0:
+        if aspect_ratio < 2.5 or aspect_ratio > 5.5:
             continue
             
-        # 车牌的面积不能太小
-        if area < image_area * 0.005:  # 面积小于整个图像的0.5%
+        # 车牌的面积不能太小 - 提高最小面积阈值
+        if area < image_area * 0.01:  # 面积小于整个图像的1%
+            continue
+            
+        # 车牌的面积也不能太大 - 添加最大面积限制
+        if area > image_area * 0.2:  # 面积大于整个图像的20%
+            continue
+            
+        # 计算轮廓的矩形度（轮廓面积与边界矩形面积的比值）
+        rect_area = w * h
+        rectity = area / rect_area if rect_area > 0 else 0
+        
+        # 车牌通常是矩形，矩形度应该较高
+        if rectity < 0.6:  # 矩形度小于60%
+            continue
+            
+        # 计算轮廓的凸包面积比（轮廓面积与凸包面积的比值）
+        hull = cv2.convexHull(contour)
+        hull_area = cv2.contourArea(hull)
+        convexity = area / hull_area if hull_area > 0 else 0
+        
+        # 车牌轮廓应该相对凸出
+        if convexity < 0.8:  # 凸包面积比小于80%
             continue
             
         plate_contours.append(contour)
@@ -125,10 +146,10 @@ def extract_plate_region(image, contours):
         image: 原始图像
         contours: 检测到的轮廓列表
     返回:
-        最可能是车牌的区域图像
+        最可能是车牌的区域图像和对应的轮廓
     """
     if not contours:
-        return None
+        return None, None
     
     # 计算每个轮廓的评分
     best_contour = None
@@ -168,7 +189,7 @@ def extract_plate_region(image, contours):
             best_contour = contour
     
     if best_contour is None:
-        return None
+        return None, None
     
     # 提取车牌区域
     x, y, w, h = cv2.boundingRect(best_contour)
@@ -183,7 +204,7 @@ def extract_plate_region(image, contours):
     # 提取车牌区域
     plate_region = image[y1:y2, x1:x2]
     
-    return plate_region
+    return plate_region, best_contour
 
 
 # 字符分割模块 (4个函数)

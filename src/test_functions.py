@@ -200,7 +200,7 @@ def test_detect_contours():
         total_contours += contour_count
         print(f"图像 {test_file} 检测到 {contour_count} 个可能是车牌的轮廓")
         
-        # 在原图上绘制轮廓
+        # 在原图上绘制所有轮廓（绿色）
         result_image = image.copy()
         cv2.drawContours(result_image, contours, -1, (0, 255, 0), 2)
         
@@ -209,6 +209,17 @@ def test_detect_contours():
         output_path = f"{output_dir}/{base_name}_4_contours.jpg"
         cv2.imwrite(output_path, result_image)
         print(f"轮廓检测结果已保存到 {output_path}")
+        
+        # 提取最佳轮廓用于后续处理
+        _, best_contour = extract_plate_region(image, contours)
+        
+        # 如果有最佳轮廓，创建一个额外的图像显示最佳轮廓（红色）
+        if best_contour is not None:
+            best_contour_image = image.copy()
+            cv2.drawContours(best_contour_image, [best_contour], -1, (0, 0, 255), 3)
+            output_path = f"{output_dir}/{base_name}_5_best_contour.jpg"
+            cv2.imwrite(output_path, best_contour_image)
+            print(f"最佳轮廓结果已保存到 {output_path}")
         
         success_count += 1
     
@@ -262,7 +273,7 @@ def test_extract_plate_region():
             continue
         
         # 测试车牌区域提取函数
-        plate_region = extract_plate_region(image, contours)
+        plate_region, best_contour = extract_plate_region(image, contours)
         
         if plate_region is None:
             print(f"图像 {test_file} 车牌区域提取失败")
@@ -270,19 +281,19 @@ def test_extract_plate_region():
         
         print(f"图像 {test_file} 成功提取车牌区域")
         
-        # 保存提取的车牌区域，使用新的命名规范
+        # 保存车牌区域，使用新的命名规范
         base_name = os.path.splitext(test_file)[0]
-        output_path = f"{output_dir}/{base_name}_5_plate.jpg"
+        output_path = f"{output_dir}/{base_name}_7_plate.jpg"
         cv2.imwrite(output_path, plate_region)
         print(f"车牌区域已保存到 {output_path}")
         
-        # 在原图上绘制提取的车牌区域边界框
+        # 在原图上绘制车牌边界框
         result_image = image.copy()
-        x, y, w, h = cv2.boundingRect(contours[0])  # 使用第一个轮廓作为示例
+        x, y, w, h = cv2.boundingRect(best_contour)
         cv2.rectangle(result_image, (x, y), (x + w, y + h), (0, 0, 255), 2)
         
-        # 保存带有边界框的结果，使用新的命名规范
-        output_path = f"{output_dir}/{base_name}_5_plate_boxes.jpg"
+        # 保存车牌边界框结果，使用新的命名规范
+        output_path = f"{output_dir}/{base_name}_6_plate_boxes.jpg"
         cv2.imwrite(output_path, result_image)
         print(f"车牌边界框结果已保存到 {output_path}")
         
