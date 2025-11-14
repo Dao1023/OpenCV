@@ -5,7 +5,7 @@
 import cv2
 import numpy as np
 import os
-from license_plate_recognition import preprocess_image, detect_edges, apply_morphology, detect_contours, extract_plate_region
+from license_plate_recognition import preprocess_image, detect_edges, apply_morphology, detect_contours, extract_plate_region, extract_and_correct_plate_region
 
 def test_preprocess_image():
     """测试图像预处理函数"""
@@ -220,6 +220,13 @@ def test_detect_contours():
             output_path = f"{output_dir}/{base_name}_5_best_contour.jpg"
             cv2.imwrite(output_path, best_contour_image)
             print(f"最佳轮廓结果已保存到 {output_path}")
+            
+            # 直接进行车牌区域提取和矫正
+            plate_region = extract_and_correct_plate_region(image, best_contour)
+            if plate_region is not None:
+                output_path = f"{output_dir}/{base_name}_6_plate.jpg"
+                cv2.imwrite(output_path, plate_region)
+                print(f"矫正后的车牌区域已保存到 {output_path}")
         
         success_count += 1
     
@@ -311,5 +318,12 @@ if __name__ == "__main__":
     test_apply_morphology()
     print("\n测试轮廓检测函数...")
     test_detect_contours()
-    print("\n测试车牌区域提取函数...")
-    test_extract_plate_region()
+    
+    print("\n测试完成！")
+    print("处理步骤说明：")
+    print("1. 预处理：灰度化、高斯模糊、直方图均衡化")
+    print("2. 边缘检测：使用Canny算子检测边缘")
+    print("3. 形态学操作：闭操作和膨胀操作")
+    print("4. 轮廓检测：检测可能是车牌的轮廓（绿色框）")
+    print("5. 最佳轮廓：显示最终选择的最佳轮廓（红色框）")
+    print("6. 车牌区域：提取并矫正后的车牌区域")

@@ -139,6 +139,97 @@ def detect_contours(morph_image):
     return plate_contours
 
 
+def extract_and_correct_plate_region(image, contour):
+    """
+    提取并矫正车牌区域
+    参数:
+        image: 原始图像
+        contour: 最佳轮廓
+    返回:
+        矫正后的车牌区域图像
+    """
+    # 获取轮廓的边界矩形
+    x, y, w, h = cv2.boundingRect(contour)
+    
+    # 扩展边界，确保包含完整的车牌
+    padding = 10
+    x1 = max(0, x - padding)
+    y1 = max(0, y - padding)
+    x2 = min(image.shape[1], x + w + padding)
+    y2 = min(image.shape[0], y + h + padding)
+    
+    # 提取车牌区域
+    plate_region = image[y1:y2, x1:x2]
+    
+    # 尝试进行透视矫正
+    try:
+        # 获取轮廓的近似多边形
+        epsilon = 0.02 * cv2.arcLength(contour, True)
+        approx = cv2.approxPolyDP(contour, epsilon, True)
+        
+        # 如果近似多边形有4个顶点，尝试透视变换
+        if len(approx) == 4:
+            # 对顶点进行排序
+            rect = order_points(approx.reshape(4, 2))
+            
+            # 计算目标矩形的宽度和高度
+            width_a = np.sqrt(((rect[1][0] - rect[0][0]) ** 2) + ((rect[1][1] - rect[0][1]) ** 2))
+            width_b = np.sqrt(((rect[2][0] - rect[3][0]) ** 2) + ((rect[2][1] - rect[3][1]) ** 2))
+            max_width = max(int(width_a), int(width_b))
+            
+            height_a = np.sqrt(((rect[3][0] - rect[0][0]) ** 2) + ((rect[3][1] - rect[0][1]) ** 2))
+            height_b = np.sqrt(((rect[2][0] - rect[1][0]) ** 2) + ((rect[2][1] - rect[1][1]) ** 2))
+            max_height = max(int(height_a), int(height_b))
+            
+            # 定义目标矩形的四个顶点
+            dst = np.array([
+                [0, 0],
+                [max_width - 1, 0],
+                [max_width - 1, max_height - 1],
+                [0, max_height - 1]], dtype="float32")
+            
+            # 计算透视变换矩阵
+            M = cv2.getPerspectiveTransform(rect, dst)
+            
+            # 应用透视变换
+            warped = cv2.warpPerspective(image, M, (max_width, max_height))
+            
+            return warped
+        else:
+            # 如果无法进行透视变换，返回原始区域
+            return plate_region
+    except Exception as e:
+        # 如果出错，返回原始区域
+        print(f"透视变换失败: {e}")
+        return plate_region
+
+
+def order_points(pts):
+    """
+    对四个点进行排序，使其按照左上、右上、右下、左下的顺序排列
+    参数:
+        pts: 四个点的坐标
+    返回:
+        排序后的四个点
+    """
+    # 计算点的和
+    s = pts.sum(axis=1)
+    # 和最小的点是左上角
+    tl = pts[np.argmin(s)]
+    # 和最大的点是右下角
+    br = pts[np.argmax(s)]
+    
+    # 计算点的差
+    diff = np.diff(pts, axis=1)
+    # 差最小的点是左上角
+    tr = pts[np.argmin(diff)]
+    # 差最大的点是右下角
+    bl = pts[np.argmax(diff)]
+    
+    # 返回排序后的点
+    return np.array([tl, tr, br, bl], dtype="float32")
+
+
 def extract_plate_region(image, contours):
     """
     车牌区域提取
